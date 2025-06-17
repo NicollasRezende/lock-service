@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+
+<model-hints>
+	<model name="com.example.article.lock.model.ArticleEditLock">
+		<field name="articleEditLockId" type="long" />
+		<field name="companyId" type="long" />
+		<field name="groupId" type="long" />
+		<field name="createDate" type="Date" />
+		<field name="modifiedDate" type="Date" />
+		<field name="articleId" type="String" />
+		<field name="userId" type="long" />
+		<field name="userName" type="String" />
+		<field name="userFullName" type="String" />
+		<field name="locked" type="boolean" />
+		<field name="lockTime" type="Date" />
+	</model>
+</model-hints>

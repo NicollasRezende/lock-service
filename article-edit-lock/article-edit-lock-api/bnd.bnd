@@ -1,0 +1,10 @@
+Bundle-Name: article-edit-lock-api
+Bundle-SymbolicName: com.example.article.lock.api
+Bundle-Version: 1.0.0
+Export-Package:\
+	com.example.article.lock.exception,\
+	com.example.article.lock.model,\
+	com.example.article.lock.service,\
+	com.example.article.lock.service.persistence
+-check: EXPORTS
+-includeresource: META-INF/service.xml=../article-edit-lock-service/service.xml

@@ -1,0 +1,14 @@
+dependencies {
+	api project(":modules:article-edit-lock:article-edit-lock-api")
+
+	compileOnly group: "com.liferay.portal", name: "release.portal.api"
+	compileOnly group: "com.liferay", name: "com.liferay.journal.api", version: "6.0.0"
+	compileOnly group: "com.liferay", name: "com.liferay.journal.service", version: "6.0.0"
+}
+
+buildService {
+	apiDir = "../article-edit-lock-api/src/main/java"
+	testDir = "../article-edit-lock-test/src/testIntegration/java"
+}
+
+group = "com.example.article.lock"

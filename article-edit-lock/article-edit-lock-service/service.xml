@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<!DOCTYPE service-builder PUBLIC "-//Liferay//DTD Service Builder 7.4.0//EN" "http://www.liferay.com/dtd/liferay-service-builder_7_4_0.dtd">
+
+<service-builder dependency-injector="ds" package-path="com.example.article.lock">
+	<author>Nicollas Rezende</author>
+	<namespace>ArticleLock</namespace>
+
+	<entity local-service="true" name="ArticleEditLock" remote-service="false">
+
+		<!-- Primary Key -->
+		<column name="articleEditLockId" primary="true" type="long" />
+
+		<!-- Audit fields -->
+		<column name="companyId" type="long" />
+		<column name="groupId" type="long" />
+		<column name="createDate" type="Date" />
+		<column name="modifiedDate" type="Date" />
+
+		<!-- Lock fields -->
+		<column name="articleId" type="String" />
+		<column name="userId" type="long" />
+		<column name="userName" type="String" />
+		<column name="userFullName" type="String" />
+		<column name="locked" type="boolean" />
+		<column name="lockTime" type="Date" />
+
+		<!-- Finder methods -->
+		<finder name="ArticleId" return-type="ArticleEditLock" unique="true">
+			<finder-column name="articleId" />
+			<finder-column name="locked" />
+		</finder>
+
+		<finder name="UserId" return-type="Collection">
+			<finder-column name="userId" />
+			<finder-column name="locked" />
+		</finder>
+
+		<finder name="GroupId" return-type="Collection">
+			<finder-column name="groupId" />
+		</finder>
+
+		<finder name="LockTime" return-type="Collection">
+			<finder-column name="lockTime" comparator="&lt;" />
+			<finder-column name="locked" />
+		</finder>
+
+		<!-- References -->
+		<reference entity="User" package-path="com.liferay.portal" />
+		<reference entity="JournalArticle" package-path="com.liferay.journal" />
+	</entity>
+</service-builder>
