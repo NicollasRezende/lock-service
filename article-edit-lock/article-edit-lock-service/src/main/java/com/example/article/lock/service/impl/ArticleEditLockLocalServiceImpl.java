@@ -4,11 +4,19 @@ import com.example.article.lock.model.ArticleEditLock;
 import com.example.article.lock.service.base.ArticleEditLockLocalServiceBaseImpl;
 import com.liferay.portal.aop.AopService;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
+import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserLocalService;
+
+import com.liferay.journal.model.JournalArticle;
+import com.liferay.journal.constants.JournalPortletKeys;
+import com.liferay.portal.kernel.model.UserNotificationDeliveryConstants;
+import com.liferay.portal.kernel.model.UserNotificationEvent;
+import com.liferay.portal.kernel.service.UserNotificationEventLocalServiceUtil;
 
 import java.util.Date;
 import java.util.List;
@@ -253,6 +261,122 @@ public class ArticleEditLockLocalServiceImpl
 		}
 
 		return null;
+	}
+
+	/**
+	 * Toma o controle de um artigo bloqueado, transferindo o lock para um novo usuário
+	 * Não requer verificação de permissões - qualquer usuário pode tomar controle
+	 *
+	 * @param articleId ID do artigo
+	 * @param newUserId ID do novo usuário que assumirá o controle
+	 * @param serviceContext contexto do serviço
+	 * @return ArticleEditLock atualizado
+	 * @throws PortalException se não houver lock ativo ou erro na transferência
+	 */
+	@Override
+	public ArticleEditLock takeControlOfArticle(
+			String articleId, long newUserId, ServiceContext serviceContext)
+			throws PortalException {
+
+		_log.info("takeControlOfArticle - Article: " + articleId +
+				", New User: " + newUserId);
+
+		// 1. Buscar lock ativo
+		ArticleEditLock currentLock = getActiveArticleLock(articleId);
+
+		if (currentLock == null) {
+			throw new PortalException(
+					"No active lock found for article: " + articleId);
+		}
+
+		// 2. Guardar informações do usuário anterior
+		long previousUserId = currentLock.getUserId();
+		String previousUserName = currentLock.getUserName();
+
+		// 3. Atualizar lock com novo usuário
+		User newUser = userLocalService.getUser(newUserId);
+		currentLock.setUserId(newUserId);
+		currentLock.setUserName(newUser.getScreenName());
+		currentLock.setUserFullName(newUser.getFullName());
+		currentLock.setLockTime(new Date());
+		currentLock.setModifiedDate(new Date());
+
+		// 4. Persistir mudanças
+		ArticleEditLock updatedLock = updateArticleEditLock(currentLock);
+
+		// 5. Enviar notificação (será implementado na Parte 4)
+		try {
+			sendTakeControlNotification(
+					previousUserId, previousUserName, newUserId,
+					newUser.getFullName(), articleId, serviceContext);
+		} catch (Exception e) {
+			_log.error("Error sending notification", e);
+			// Não falhar a operação por erro na notificação
+		}
+
+		_log.info("Control taken successfully: Article " + articleId +
+				" transferred from user " + previousUserId +
+				" to user " + newUserId);
+
+		return updatedLock;
+	}
+
+	/**
+	 * Método auxiliar para notificação (implementação básica por enquanto)
+	 */
+	private void sendTakeControlNotification(
+			long previousUserId, String previousUserName,
+			long newUserId, String newUserName,
+			String articleId, ServiceContext serviceContext) {
+
+		try {
+			// Buscar informações do artigo
+			String articleTitle = articleId;
+			try {
+				com.liferay.journal.model.JournalArticle article = journalArticleLocalService.getArticle(
+						serviceContext.getScopeGroupId(), articleId);
+				articleTitle = article.getTitle(serviceContext.getLocale());
+			} catch (Exception e) {
+				_log.debug("Could not get article title", e);
+			}
+
+			// Criar payload da notificação
+			JSONObject payload = JSONFactoryUtil.createJSONObject();
+			payload.put("notificationType", "article-control-taken");
+			payload.put("articleId", articleId);
+			payload.put("articleTitle", articleTitle);
+			payload.put("previousUserId", previousUserId);
+			payload.put("previousUserName", previousUserName);
+			payload.put("newUserId", newUserId);
+			payload.put("newUserName", newUserName);
+			payload.put("timestamp", System.currentTimeMillis());
+
+			// Criar notificação
+			com.liferay.portal.kernel.model.UserNotificationEvent notification =
+					com.liferay.portal.kernel.service.UserNotificationEventLocalServiceUtil.createUserNotificationEvent(
+							counterLocalService.increment());
+
+			notification.setCompanyId(serviceContext.getCompanyId());
+			notification.setUserId(previousUserId);
+			notification.setType(com.liferay.journal.constants.JournalPortletKeys.JOURNAL);
+			notification.setTimestamp(System.currentTimeMillis());
+			notification.setDeliveryType(
+					com.liferay.portal.kernel.model.UserNotificationDeliveryConstants.TYPE_WEBSITE);
+			notification.setDelivered(false);
+			notification.setArchived(false);
+			notification.setPayload(payload.toString());
+
+			// Salvar notificação
+			com.liferay.portal.kernel.service.UserNotificationEventLocalServiceUtil.addUserNotificationEvent(
+					notification);
+
+			_log.info("Notification sent to user " + previousUserId +
+					" about control transfer");
+
+		} catch (Exception e) {
+			_log.error("Error sending take control notification", e);
+			// Não propagar erro - notificação é secundária
+		}
 	}
 
 	// UserLocalService já é herdado da classe base
