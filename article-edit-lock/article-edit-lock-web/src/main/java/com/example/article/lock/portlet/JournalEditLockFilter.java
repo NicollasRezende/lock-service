@@ -136,8 +136,14 @@ public class JournalEditLockFilter implements RenderFilter {
                 "/o/frontend-css-web/main.css'>");
         writer.println("<style>");
         writer.println("  .article-lock-modal { padding: 2rem; }");
-        writer.println("  .modal-actions { margin-top: 1.5rem; }");
+        writer.println("  .modal-content-custom { padding: 2rem; }");
+        writer.println("  .modal-actions { margin-top: 2rem; text-align: right; }");
         writer.println("  .btn + .btn { margin-left: 0.5rem; }");
+        writer.println("  .content-text { color: #6c757d; margin-bottom: 1.5rem; }");
+        writer.println("  .options-text { color: #495057; margin-bottom: 1rem; }");
+        writer.println("  .options-list { margin-left: 0; padding-left: 0; }");
+        writer.println("  .options-list li { margin-bottom: 0.5rem; color: #6c757d; }");
+        writer.println("  .card-title { color: #495057; font-weight: 600; }");
         writer.println("</style>");
         writer.println("</head>");
         writer.println("<body>");
@@ -146,62 +152,47 @@ public class JournalEditLockFilter implements RenderFilter {
         writer.println("  <div class='row justify-content-center'>");
         writer.println("    <div class='col-md-6'>");
         writer.println("      <div class='card'>");
-        writer.println("        <div class='card-header'>");
-        writer.println("          <h3 class='card-title'>" +
-                LanguageUtil.get(themeDisplay.getLocale(), "article-being-edited") +
-                "</h3>");
-        writer.println("        </div>");
-        writer.println("        <div class='card-body'>");
-        writer.println("          <div class='alert alert-warning' role='alert'>");
-        writer.println("            <span class='alert-indicator'>");
-        writer.println("              <svg class='lexicon-icon lexicon-icon-warning-full'>");
-        writer.println("                <use href='" + themeDisplay.getPathThemeImages() +
-                "/clay/icons.svg#warning-full'></use>");
-        writer.println("              </svg>");
-        writer.println("            </span>");
-        writer.println("            <div class='alert-content'>");
-        writer.println("              <strong class='lead'>" +
-                LanguageUtil.get(themeDisplay.getLocale(), "article-locked-title") +
-                "</strong>");
-        writer.println("              <br/>");
-        writer.println("              <p>" +
-                LanguageUtil.format(themeDisplay.getLocale(),
-                        "article-is-being-edited-by-user",
-                        new String[]{editingUserName, editingUserId}) +
-                "</p>");
-        writer.println("              <p>" +
-                LanguageUtil.get(themeDisplay.getLocale(),
-                        "article-lock-timeout-message") +
-                "</p>");
-        writer.println("            </div>");
-        writer.println("          </div>");
-        writer.println("        </div>");
-        writer.println("        <div class='card-footer modal-actions'>");
+        writer.println("        <div class='card-body modal-content-custom'>");
+
+        // Título principal
+        writer.println("          <h3 class='card-title mb-4'>Este conteúdo está sendo editado!</h3>");
+
+        // Texto explicativo principal
+        writer.println("          <p class='content-text'>Este documento está sendo editado por outro membro da equipe neste momento.</p>");
+
+        // Texto das opções
+        writer.println("          <p class='options-text'>Para manter a colaboração organizada, você pode:</p>");
+
+        // Lista de opções
+        writer.println("          <ul class='options-list'>");
+        writer.println("            <li>Assumir o controle, encerrando a edição atual do outro colaborador.</li>");
+        writer.println("            <li>Voltar, e aguardar a finalização da edição em andamento.</li>");
+        writer.println("          </ul>");
+
+        // Botões de ação
+        writer.println("          <div class='modal-actions'>");
 
         // Botão Voltar
-        writer.println("          <button type='button' class='btn btn-secondary' " +
+        writer.println("            <button type='button' class='btn btn-secondary' " +
                 "onclick='window.history.back();'>");
-        writer.println("            <span class='lfr-btn-label'>" +
-                LanguageUtil.get(themeDisplay.getLocale(), "go-back") +
-                "</span>");
-        writer.println("          </button>");
+        writer.println("              <span class='lfr-btn-label'>Voltar</span>");
+        writer.println("            </button>");
 
-        // Botão Tomar Controle - SEMPRE VISÍVEL
-        writer.println("          <button type='button' class='btn btn-warning' " +
+        // Botão Assumir o controle
+        writer.println("            <button type='button' class='btn btn-primary' " +
                 "id='takeControlBtn' " +
                 "data-article-id='" + HtmlUtil.escapeAttribute(articleId) + "'>");
-        writer.println("            <span class='lfr-btn-label'>" +
-                LanguageUtil.get(themeDisplay.getLocale(), "take-control") +
-                "</span>");
-        writer.println("          </button>");
+        writer.println("              <span class='lfr-btn-label'>Assumir o controle</span>");
+        writer.println("            </button>");
 
+        writer.println("          </div>");
         writer.println("        </div>");
         writer.println("      </div>");
         writer.println("    </div>");
         writer.println("  </div>");
         writer.println("</div>");
 
-        // JavaScript
+        // JavaScript (mantém o mesmo)
         writer.println("<script>");
         writer.println("(function() {");
 
@@ -212,49 +203,71 @@ public class JournalEditLockFilter implements RenderFilter {
         writer.println("      e.preventDefault();");
         writer.println("      ");
         writer.println("      var articleId = this.getAttribute('data-article-id');");
-        writer.println("      var confirmMsg = '" +
-                HtmlUtil.escapeJS(LanguageUtil.get(themeDisplay.getLocale(),
-                        "confirm-take-control")) + "';");
+        writer.println("      console.log('Taking control of article:', articleId);");
+        writer.println("      ");
+        writer.println("      var confirmMsg = 'Tem certeza que deseja assumir o controle deste documento?';");
         writer.println("      ");
         writer.println("      if (confirm(confirmMsg)) {");
         writer.println("        var form = document.createElement('form');");
         writer.println("        form.method = 'POST';");
         writer.println("        form.action = '" + renderResponse.createActionURL() + "';");
         writer.println("        ");
-        writer.println("        var cmdInput = document.createElement('input');");
-        writer.println("        cmdInput.type = 'hidden';");
-        writer.println("        cmdInput.name = 'javax.portlet.action';");
-        writer.println("        cmdInput.value = '/journal/take_article_control';");
-        writer.println("        form.appendChild(cmdInput);");
+
+        // Adicionar parâmetros do portlet namespace
+        writer.println("        var namespaceInput = document.createElement('input');");
+        writer.println("        namespaceInput.type = 'hidden';");
+        writer.println("        namespaceInput.name = '" + renderResponse.getNamespace() + "javax.portlet.action';");
+        writer.println("        namespaceInput.value = '/journal/take_article_control';");
+        writer.println("        form.appendChild(namespaceInput);");
         writer.println("        ");
+
+        // Adicionar articleId com namespace
         writer.println("        var articleInput = document.createElement('input');");
         writer.println("        articleInput.type = 'hidden';");
-        writer.println("        articleInput.name = 'articleId';");
+        writer.println("        articleInput.name = '" + renderResponse.getNamespace() + "articleId';");
         writer.println("        articleInput.value = articleId;");
         writer.println("        form.appendChild(articleInput);");
+        writer.println("        ");
+
+        // Adicionar parâmetros do lifecycle
+        writer.println("        var lifecycleInput = document.createElement('input');");
+        writer.println("        lifecycleInput.type = 'hidden';");
+        writer.println("        lifecycleInput.name = 'p_p_id';");
+        writer.println("        lifecycleInput.value = '" + renderResponse.getNamespace().replace("_INSTANCE_", "").replace("_", "") + "';");
+        writer.println("        form.appendChild(lifecycleInput);");
+        writer.println("        ");
+
+        writer.println("        var lifecycleInput2 = document.createElement('input');");
+        writer.println("        lifecycleInput2.type = 'hidden';");
+        writer.println("        lifecycleInput2.name = 'p_p_lifecycle';");
+        writer.println("        lifecycleInput2.value = '1';");
+        writer.println("        form.appendChild(lifecycleInput2);");
         writer.println("        ");
 
         // Criar URL de redirect para edição
         String editUrl = themeDisplay.getPortalURL() +
                 themeDisplay.getURLCurrent() +
+                "?p_p_id=" + JournalPortletKeys.JOURNAL +
+                "&p_p_lifecycle=0" +
                 "&_" + JournalPortletKeys.JOURNAL +
                 "_mvcRenderCommandName=/journal/edit_article" +
                 "&_" + JournalPortletKeys.JOURNAL +
                 "_articleId=" + articleId;
 
         writer.println("        var redirectInput = document.createElement('input');");
-        writer.println("        redirectInput.type = 'hidden';");
-        writer.println("        redirectInput.name = 'redirect';");
+        writer.println( "        redirectInput.type = 'hidden';");
+        writer.println("        redirectInput.name = '" + renderResponse.getNamespace() + "redirect';");
         writer.println("        redirectInput.value = '" +
                 HtmlUtil.escapeJS(editUrl) + "';");
         writer.println("        form.appendChild(redirectInput);");
         writer.println("        ");
         writer.println("        var backURLInput = document.createElement('input');");
         writer.println("        backURLInput.type = 'hidden';");
-        writer.println("        backURLInput.name = 'backURL';");
+        writer.println("        backURLInput.name = '" + renderResponse.getNamespace() + "backURL';");
         writer.println("        backURLInput.value = window.location.href;");
         writer.println("        form.appendChild(backURLInput);");
         writer.println("        ");
+        writer.println("        console.log('Submitting form with articleId:', articleId);");
         writer.println("        document.body.appendChild(form);");
         writer.println("        form.submit();");
         writer.println("      }");

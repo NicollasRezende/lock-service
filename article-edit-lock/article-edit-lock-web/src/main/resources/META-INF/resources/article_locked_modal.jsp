@@ -52,6 +52,15 @@ if (editingUser != null) {
                 <button type="button" class="btn btn-secondary" onclick="window.history.back();">
                     <liferay-ui:message key="go-back" />
                 </button>
+                
+                <portlet:actionURL name="/journal/take_article_control" var="takeControlURL">
+                    <portlet:param name="articleId" value="<%= lockedArticleId %>" />
+                    <portlet:param name="redirect" value="<%= currentURL %>" />
+                </portlet:actionURL>
+                
+                <button type="button" class="btn btn-warning" onclick="takeArticleControl();">
+                    <liferay-ui:message key="take-control" />
+                </button>
             </div>
         </div>
     </div>
@@ -65,4 +74,10 @@ if (editingUser != null) {
             show: true
         });
     });
+    
+    function takeArticleControl() {
+        if (confirm('<liferay-ui:message key="confirm-take-control-message" />')) {
+            window.location.href = '<%= takeControlURL %>';
+        }
+    }
 </aui:script>

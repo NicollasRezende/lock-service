@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!DOCTYPE user-notification-definitions PUBLIC 
+    "-//Liferay//DTD User Notification Definitions 7.4.0//EN" 
+    "http://www.liferay.com/dtd/liferay-user-notification-definitions_7_4_0.dtd">
+
+<user-notification-definitions>
+    <definition>
+        <notification-type>article_control_notification_portlet</notification-type>
+        <description>Notificações de controle de artigo</description>
+        
+        <delivery-type>
+            <name>website</name>
+            <type>1</type>
+            <default>true</default>
+            <modifiable>true</modifiable>
+        </delivery-type>
+        
+        <delivery-type>
+            <name>email</name>
+            <type>2</type>
+            <default>false</default>
+            <modifiable>true</modifiable>
+        </delivery-type>
+    </definition>
+</user-notification-definitions>
