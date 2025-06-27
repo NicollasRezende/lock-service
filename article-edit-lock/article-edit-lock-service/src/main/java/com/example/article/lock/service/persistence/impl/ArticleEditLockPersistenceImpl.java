@@ -88,7 +88,6 @@ public class ArticleEditLockPersistenceImpl
 	private FinderPath _finderPathWithoutPaginationFindAll;
 	private FinderPath _finderPathCountAll;
 	private FinderPath _finderPathFetchByArticleId;
-	private FinderPath _finderPathCountByArticleId;
 
 	/**
 	 * Returns the article edit lock where articleId = &#63; and locked = &#63; or throws a <code>NoSuchArticleEditLockException</code> if it could not be found.
@@ -268,62 +267,13 @@ public class ArticleEditLockPersistenceImpl
 	 */
 	@Override
 	public int countByArticleId(String articleId, boolean locked) {
-		articleId = Objects.toString(articleId, "");
+		ArticleEditLock articleEditLock = fetchByArticleId(articleId, locked);
 
-		FinderPath finderPath = _finderPathCountByArticleId;
-
-		Object[] finderArgs = new Object[] {articleId, locked};
-
-		Long count = (Long)finderCache.getResult(finderPath, finderArgs, this);
-
-		if (count == null) {
-			StringBundler sb = new StringBundler(3);
-
-			sb.append(_SQL_COUNT_ARTICLEEDITLOCK_WHERE);
-
-			boolean bindArticleId = false;
-
-			if (articleId.isEmpty()) {
-				sb.append(_FINDER_COLUMN_ARTICLEID_ARTICLEID_3);
-			}
-			else {
-				bindArticleId = true;
-
-				sb.append(_FINDER_COLUMN_ARTICLEID_ARTICLEID_2);
-			}
-
-			sb.append(_FINDER_COLUMN_ARTICLEID_LOCKED_2);
-
-			String sql = sb.toString();
-
-			Session session = null;
-
-			try {
-				session = openSession();
-
-				Query query = session.createQuery(sql);
-
-				QueryPos queryPos = QueryPos.getInstance(query);
-
-				if (bindArticleId) {
-					queryPos.add(articleId);
-				}
-
-				queryPos.add(locked);
-
-				count = (Long)query.uniqueResult();
-
-				finderCache.putResult(finderPath, finderArgs, count);
-			}
-			catch (Exception exception) {
-				throw processException(exception);
-			}
-			finally {
-				closeSession(session);
-			}
+		if (articleEditLock == null) {
+			return 0;
 		}
 
-		return count.intValue();
+		return 1;
 	}
 
 	private static final String _FINDER_COLUMN_ARTICLEID_ARTICLEID_2 =
@@ -2044,8 +1994,6 @@ public class ArticleEditLockPersistenceImpl
 		};
 
 		finderCache.putResult(
-			_finderPathCountByArticleId, args, Long.valueOf(1));
-		finderCache.putResult(
 			_finderPathFetchByArticleId, args, articleEditLockModelImpl);
 	}
 
@@ -2511,11 +2459,6 @@ public class ArticleEditLockPersistenceImpl
 			FINDER_CLASS_NAME_ENTITY, "fetchByArticleId",
 			new String[] {String.class.getName(), Boolean.class.getName()},
 			new String[] {"articleId", "locked"}, true);
-
-		_finderPathCountByArticleId = new FinderPath(
-			FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByArticleId",
-			new String[] {String.class.getName(), Boolean.class.getName()},
-			new String[] {"articleId", "locked"}, false);
 
 		_finderPathWithPaginationFindByUserId = new FinderPath(
 			FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByUserId",

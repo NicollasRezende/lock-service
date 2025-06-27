@@ -21,14 +21,10 @@ import javax.servlet.http.HttpSession;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
-@Component(
-        immediate = true,
-        property = {
-                "javax.portlet.name=" + JournalPortletKeys.JOURNAL,
-                "service.ranking:Integer=50"
-        },
-        service = javax.portlet.filter.PortletFilter.class
-)
+@Component(immediate = true, property = {
+        "javax.portlet.name=" + JournalPortletKeys.JOURNAL,
+        "service.ranking:Integer=50"
+}, service = javax.portlet.filter.PortletFilter.class)
 public class JournalExitDetectionFilter implements RenderFilter {
 
     private static final Log _log = LogFactoryUtil.getLog(JournalExitDetectionFilter.class);
@@ -50,17 +46,6 @@ public class JournalExitDetectionFilter implements RenderFilter {
             FilterChain filterChain)
             throws IOException, PortletException {
 
-        _log.info(">>> ======= JournalExitDetectionFilter START =======");
-
-        // Debug: Listar todos os parâmetros
-        _log.info(">>> All parameters:");
-        Enumeration<String> paramNames = renderRequest.getParameterNames();
-        while (paramNames.hasMoreElements()) {
-            String paramName = paramNames.nextElement();
-            String paramValue = renderRequest.getParameter(paramName);
-            _log.info(">>>   " + paramName + " = " + paramValue);
-        }
-
         HttpServletRequest httpRequest = com.liferay.portal.kernel.util.PortalUtil.getHttpServletRequest(renderRequest);
         HttpSession session = httpRequest.getSession();
 
@@ -69,56 +54,57 @@ public class JournalExitDetectionFilter implements RenderFilter {
         String mvcPath = ParamUtil.getString(renderRequest, "mvcPath", "");
         String mvcRenderCommandName = ParamUtil.getString(renderRequest, "mvcRenderCommandName", "");
 
-        _log.info(">>> Extracted values:");
-        _log.info(">>>   cmd: " + cmd);
-        _log.info(">>>   articleId: " + articleId);
-        _log.info(">>>   mvcPath: " + mvcPath);
-        _log.info(">>>   mvcRenderCommandName: " + mvcRenderCommandName);
-        _log.info(">>>   Request URL: " + httpRequest.getRequestURL());
-
         // Detecta se está editando um artigo
         boolean isEditingArticle = "edit".equals(cmd) ||
                 "add".equals(cmd) ||
                 mvcPath.contains("edit_article") ||
                 "/journal/edit_article".equals(mvcRenderCommandName);
 
-        _log.info(">>> Is editing article? " + isEditingArticle);
-
         // Verifica o que está na sessão atualmente
         String currentSessionArticleId = (String) session.getAttribute(EDITING_ARTICLE_KEY);
-        _log.info(">>> Current article in session: " + currentSessionArticleId);
 
         if (isEditingArticle && articleId != null && !articleId.isEmpty()) {
             // Marca que está editando este artigo
-            _log.info(">>> STORING in session - User started editing article: " + articleId);
             session.setAttribute(EDITING_ARTICLE_KEY, articleId);
 
         } else {
-            _log.info(">>> NOT editing article page");
-
             // Não está mais editando - verifica se havia um artigo sendo editado
             String previousArticleId = (String) session.getAttribute(EDITING_ARTICLE_KEY);
 
             if (previousArticleId != null) {
-                _log.info(">>> DETECTED EXIT - User left article editing page. Previous article: " + previousArticleId);
 
                 try {
-                    // Libera o lock do artigo anterior
-                    _articleEditLockLocalService.unlockArticle(previousArticleId);
-                    _log.info(">>> SUCCESS - Lock released for article: " + previousArticleId);
+                    // Obtém o ID do usuário atual
+                    com.liferay.portal.kernel.theme.ThemeDisplay themeDisplay = (com.liferay.portal.kernel.theme.ThemeDisplay) renderRequest
+                            .getAttribute(
+                                    com.liferay.portal.kernel.util.WebKeys.THEME_DISPLAY);
+
+                    if (themeDisplay != null) {
+                        long currentUserId = themeDisplay.getUserId();
+
+                        // CRÍTICO: Só remove o lock se o usuário atual realmente tem o controle
+                        com.example.article.lock.model.ArticleEditLock activeLock = _articleEditLockLocalService
+                                .getActiveArticleLock(previousArticleId);
+
+                        if (activeLock != null) {
+                            if (activeLock.getUserId() == currentUserId) {
+                                // O usuário que está saindo realmente tinha o controle
+                                _articleEditLockLocalService.unlockArticle(previousArticleId);
+                            }
+                            // Caso contrário, outro usuário tem o controle - NÃO remove o lock
+                        }
+                        // Se não há lock ativo, artigo já estava livre
+                    } else {
+                        _log.warn("ThemeDisplay não encontrado, não é possível verificar usuário");
+                    }
                 } catch (Exception e) {
-                    _log.error(">>> ERROR - Error releasing lock on navigation", e);
+                    _log.error("Error checking/releasing lock on navigation", e);
                 }
 
-                // Remove da sessão
+                // Remove da sessão independentemente (a sessão é local do usuário)
                 session.removeAttribute(EDITING_ARTICLE_KEY);
-                _log.info(">>> Session cleared");
-            } else {
-                _log.info(">>> No previous article in session to unlock");
             }
         }
-
-        _log.info(">>> ======= JournalExitDetectionFilter END - Calling chain =======");
 
         // Continua o processamento normal
         filterChain.doFilter(renderRequest, renderResponse);

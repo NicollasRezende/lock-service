@@ -18,13 +18,9 @@ import javax.portlet.filter.FilterConfig;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
-@Component(
-        immediate = true,
-        property = {
-                "javax.portlet.name=" + JournalPortletKeys.JOURNAL
-        },
-        service = javax.portlet.filter.PortletFilter.class
-)
+@Component(immediate = true, property = {
+        "javax.portlet.name=" + JournalPortletKeys.JOURNAL
+}, service = javax.portlet.filter.PortletFilter.class)
 public class JournalPublishActionFilter implements ActionFilter {
 
     private static final Log _log = LogFactoryUtil.getLog(JournalPublishActionFilter.class);
@@ -48,12 +44,6 @@ public class JournalPublishActionFilter implements ActionFilter {
         String workflowAction = ParamUtil.getString(actionRequest, "workflowAction");
         String actionName = actionRequest.getParameter(ActionRequest.ACTION_NAME);
 
-        _log.info(">>> FILTER: Action detected!");
-        _log.info(">>> ActionName: " + actionName);
-        _log.info(">>> Cmd: " + cmd);
-        _log.info(">>> ArticleId: " + articleId);
-        _log.info(">>> WorkflowAction: " + workflowAction);
-
         // IMPORTANTE: Primeiro executa a ação original
         filterChain.doFilter(actionRequest, actionResponse);
 
@@ -65,15 +55,10 @@ public class JournalPublishActionFilter implements ActionFilter {
                 "/journal/add_article".equals(actionName)) {
 
             if ("1".equals(workflowAction)) {
-                _log.info(">>> Article PUBLISHED - releasing lock");
                 shouldReleaseLock = true;
-            }
-            else if ("2".equals(workflowAction)) {
-                _log.info(">>> Article saved as DRAFT - releasing lock");
+            } else if ("2".equals(workflowAction)) {
                 shouldReleaseLock = true;
-            }
-            else if (articleId != null && !articleId.isEmpty()) {
-                _log.info(">>> Article SAVED - releasing lock");
+            } else if (articleId != null && !articleId.isEmpty()) {
                 shouldReleaseLock = true;
             }
         }
@@ -81,7 +66,6 @@ public class JournalPublishActionFilter implements ActionFilter {
         if (shouldReleaseLock && articleId != null && !articleId.isEmpty()) {
             try {
                 _articleEditLockLocalService.unlockArticle(articleId);
-                _log.info(">>> Lock released for: " + articleId);
             } catch (Exception e) {
                 _log.error("Error releasing lock", e);
             }

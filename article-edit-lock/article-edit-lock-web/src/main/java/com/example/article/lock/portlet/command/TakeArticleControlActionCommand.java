@@ -26,14 +26,10 @@ import javax.portlet.ActionResponse;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
-@Component(
-        immediate = true,
-        property = {
-                "javax.portlet.name=" + JournalPortletKeys.JOURNAL,
-                "mvc.command.name=/journal/take_article_control"
-        },
-        service = MVCActionCommand.class
-)
+@Component(immediate = true, property = {
+        "javax.portlet.name=" + JournalPortletKeys.JOURNAL,
+        "mvc.command.name=/journal/take_article_control"
+}, service = MVCActionCommand.class)
 public class TakeArticleControlActionCommand extends BaseMVCActionCommand {
 
     private static final Log _log = LogFactoryUtil.getLog(
@@ -44,15 +40,10 @@ public class TakeArticleControlActionCommand extends BaseMVCActionCommand {
             ActionRequest actionRequest, ActionResponse actionResponse)
             throws Exception {
 
-        _log.info("=== TakeArticleControlActionCommand START ===");
-
         ThemeDisplay themeDisplay = (ThemeDisplay) actionRequest.getAttribute(
                 WebKeys.THEME_DISPLAY);
 
         String articleId = ParamUtil.getString(actionRequest, "articleId");
-
-        _log.info("Taking control of article: " + articleId +
-                " for user: " + themeDisplay.getUserId());
 
         try {
             ServiceContext serviceContext = ServiceContextFactory.getInstance(
@@ -63,7 +54,6 @@ public class TakeArticleControlActionCommand extends BaseMVCActionCommand {
             long previousUserId = 0;
             if (existingLock != null && existingLock.isLocked()) {
                 previousUserId = existingLock.getUserId();
-                _log.info("Previous user had control: " + previousUserId);
             }
 
             // Tomar controle do artigo
@@ -79,7 +69,7 @@ public class TakeArticleControlActionCommand extends BaseMVCActionCommand {
                     String articleTitle = articleId;
                     try {
                         JournalArticle article = _journalArticleLocalService.getLatestArticle(
-                            themeDisplay.getScopeGroupId(), articleId);
+                                themeDisplay.getScopeGroupId(), articleId);
                         if (article != null && Validator.isNotNull(article.getTitle())) {
                             articleTitle = article.getTitle(themeDisplay.getLocale());
                         }
@@ -88,14 +78,11 @@ public class TakeArticleControlActionCommand extends BaseMVCActionCommand {
                     }
 
                     _articleControlNotificationService.sendControlTakenNotification(
-                        previousUserId,
-                        themeDisplay.getUserId(),
-                        articleId,
-                        articleTitle,
-                        serviceContext
-                    );
-
-                    _log.info("Notification sent to previous user: " + previousUserId);
+                            previousUserId,
+                            themeDisplay.getUserId(),
+                            articleId,
+                            articleTitle,
+                            serviceContext);
                 } catch (Exception e) {
                     _log.error("Failed to send notification to previous user", e);
                     // Não falhar a operação principal por causa da notificação
@@ -103,8 +90,6 @@ public class TakeArticleControlActionCommand extends BaseMVCActionCommand {
             }
 
             SessionMessages.add(actionRequest, "article-control-taken");
-
-            _log.info("Control taken successfully");
 
             // Redirecionar para edição do artigo
             String redirect = _portal.escapeRedirect(
@@ -131,8 +116,6 @@ public class TakeArticleControlActionCommand extends BaseMVCActionCommand {
                     ParamUtil.getString(actionRequest, "backURL",
                             themeDisplay.getURLCurrent()));
         }
-
-        _log.info("=== TakeArticleControlActionCommand END ===");
     }
 
     @Reference

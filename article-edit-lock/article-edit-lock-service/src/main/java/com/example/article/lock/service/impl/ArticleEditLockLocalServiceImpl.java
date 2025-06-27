@@ -27,10 +27,7 @@ import org.osgi.service.component.annotations.Reference;
 /**
  * @author Nicollas Rezende
  */
-@Component(
-		property = "model.class.name=com.example.article.lock.model.ArticleEditLock",
-		service = AopService.class
-)
+@Component(property = "model.class.name=com.example.article.lock.model.ArticleEditLock", service = AopService.class)
 public class ArticleEditLockLocalServiceImpl
 		extends ArticleEditLockLocalServiceBaseImpl {
 
@@ -38,6 +35,7 @@ public class ArticleEditLockLocalServiceImpl
 
 	/**
 	 * Tenta criar um lock para edição do artigo
+	 * 
 	 * @return true se conseguiu criar o lock, false se já existe um lock ativo
 	 */
 	public boolean tryLockArticle(
@@ -54,12 +52,12 @@ public class ArticleEditLockLocalServiceImpl
 					", locked by user: " + existingLock.getUserId() +
 					", lock time: " + existingLock.getLockTime());
 
-			// Verifica se o lock expirou (mais de 5 minutos para teste, mude para 2 horas em produção)
+			// Verifica se o lock expirou (30 minutos para teste, 2 horas para produção)
 			long lockAge = System.currentTimeMillis() - existingLock.getLockTime().getTime();
-			long fiveMinutesInMillis = 5 * 60 * 1000; // 5 minutos para teste
+			long thirtyMinutesInMillis = 30 * 60 * 1000; // 30 minutos para teste
 			// long twoHoursInMillis = 2 * 60 * 60 * 1000; // 2 horas para produção
 
-			if (lockAge > fiveMinutesInMillis) {
+			if (lockAge > thirtyMinutesInMillis) {
 				// Lock expirou, reutiliza o registro existente
 				_log.info("Lock expired, reusing existing record...");
 
@@ -151,8 +149,7 @@ public class ArticleEditLockLocalServiceImpl
 		com.liferay.portal.kernel.dao.orm.DynamicQuery dynamicQuery = dynamicQuery();
 
 		dynamicQuery.add(
-				com.liferay.portal.kernel.dao.orm.RestrictionsFactoryUtil.eq("articleId", articleId)
-		);
+				com.liferay.portal.kernel.dao.orm.RestrictionsFactoryUtil.eq("articleId", articleId));
 
 		List<ArticleEditLock> locks = dynamicQuery(dynamicQuery);
 
@@ -190,22 +187,35 @@ public class ArticleEditLockLocalServiceImpl
 	 * Verifica se um artigo está bloqueado por outro usuário
 	 */
 	public boolean isArticleLockedByOtherUser(String articleId, long userId) {
+		_log.info("🔍 SERVICE: isArticleLockedByOtherUser(articleId=" + articleId + ", userId=" + userId + ")");
+
 		ArticleEditLock lock = getActiveArticleLock(articleId);
 
 		if (lock == null) {
+			_log.info("🔓 SERVICE: No active lock found → returning false");
 			return false;
 		}
 
-		// Verifica timeout de 5 minutos para teste
+		_log.info("🔒 SERVICE: Active lock found - lockUserId=" + lock.getUserId() +
+				", lockTime=" + lock.getLockTime());
+
+		// Verifica timeout de 30 minutos para teste
 		long lockAge = System.currentTimeMillis() - lock.getLockTime().getTime();
-		long fiveMinutesInMillis = 5 * 60 * 1000; // 5 minutos para teste
+		long thirtyMinutesInMillis = 30 * 60 * 1000; // 30 minutos para teste
 		// long twoHoursInMillis = 2 * 60 * 60 * 1000; // 2 horas para produção
 
-		if (lockAge > fiveMinutesInMillis) {
+		_log.info("⏱️ SERVICE: Lock age=" + lockAge + "ms (" + (lockAge / 1000) + " seconds)");
+
+		if (lockAge > thirtyMinutesInMillis) {
+			_log.info("⌛ SERVICE: Lock expired → returning false");
 			return false;
 		}
 
-		return lock.getUserId() != userId;
+		boolean isOtherUser = lock.getUserId() != userId;
+		_log.info("👤 SERVICE: Is other user? " + isOtherUser + " (lock=" + lock.getUserId() + " vs current=" + userId
+				+ ")");
+
+		return isOtherUser;
 	}
 
 	/**
@@ -218,19 +228,19 @@ public class ArticleEditLockLocalServiceImpl
 			// Busca todos os locks ativos
 			// Como não temos um finder específico para todos os locks ativos,
 			// vamos buscar todos e filtrar
-			List<ArticleEditLock> allLocks =
-					articleEditLockPersistence.findAll();
+			List<ArticleEditLock> allLocks = articleEditLockPersistence.findAll();
 
-			Date fiveMinutesAgo = new Date(System.currentTimeMillis() - (5 * 60 * 1000)); // 5 minutos para teste
-			// Date twoHoursAgo = new Date(System.currentTimeMillis() - (2 * 60 * 60 * 1000)); // 2 horas para produção
+			Date thirtyMinutesAgo = new Date(System.currentTimeMillis() - (30 * 60 * 1000)); // 30 minutos para teste
+			// Date twoHoursAgo = new Date(System.currentTimeMillis() - (2 * 60 * 60 *
+			// 1000)); // 2 horas para produção
 
-			_log.info("Looking for locks older than: " + fiveMinutesAgo);
+			_log.info("Looking for locks older than: " + thirtyMinutesAgo);
 			_log.info("Total locks found: " + allLocks.size());
 
 			int expiredCount = 0;
 			for (ArticleEditLock lock : allLocks) {
 				// Verifica se está locked e se expirou
-				if (lock.isLocked() && lock.getLockTime().before(fiveMinutesAgo)) {
+				if (lock.isLocked() && lock.getLockTime().before(thirtyMinutesAgo)) {
 					_log.info("Found expired lock: articleId=" + lock.getArticleId() +
 							", userId=" + lock.getUserId() +
 							", lockTime=" + lock.getLockTime());
@@ -264,11 +274,12 @@ public class ArticleEditLockLocalServiceImpl
 	}
 
 	/**
-	 * Toma o controle de um artigo bloqueado, transferindo o lock para um novo usuário
+	 * Toma o controle de um artigo bloqueado, transferindo o lock para um novo
+	 * usuário
 	 * Não requer verificação de permissões - qualquer usuário pode tomar controle
 	 *
-	 * @param articleId ID do artigo
-	 * @param newUserId ID do novo usuário que assumirá o controle
+	 * @param articleId      ID do artigo
+	 * @param newUserId      ID do novo usuário que assumirá o controle
 	 * @param serviceContext contexto do serviço
 	 * @return ArticleEditLock atualizado
 	 * @throws PortalException se não houver lock ativo ou erro na transferência
@@ -352,8 +363,8 @@ public class ArticleEditLockLocalServiceImpl
 			payload.put("timestamp", System.currentTimeMillis());
 
 			// Criar notificação
-			com.liferay.portal.kernel.model.UserNotificationEvent notification =
-					com.liferay.portal.kernel.service.UserNotificationEventLocalServiceUtil.createUserNotificationEvent(
+			com.liferay.portal.kernel.model.UserNotificationEvent notification = com.liferay.portal.kernel.service.UserNotificationEventLocalServiceUtil
+					.createUserNotificationEvent(
 							counterLocalService.increment());
 
 			notification.setCompanyId(serviceContext.getCompanyId());

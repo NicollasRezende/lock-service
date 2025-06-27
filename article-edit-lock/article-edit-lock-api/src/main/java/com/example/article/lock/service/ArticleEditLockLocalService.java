@@ -273,11 +273,12 @@ public interface ArticleEditLockLocalService
 	public boolean isArticleLockedByOtherUser(String articleId, long userId);
 
 	/**
-	 * Toma o controle de um artigo bloqueado, transferindo o lock para um novo usuário
+	 * Toma o controle de um artigo bloqueado, transferindo o lock para um novo
+	 * usuário
 	 * Não requer verificação de permissões - qualquer usuário pode tomar controle
 	 *
-	 * @param articleId ID do artigo
-	 * @param newUserId ID do novo usuário que assumirá o controle
+	 * @param articleId      ID do artigo
+	 * @param newUserId      ID do novo usuário que assumirá o controle
 	 * @param serviceContext contexto do serviço
 	 * @return ArticleEditLock atualizado
 	 * @throws PortalException se não houver lock ativo ou erro na transferência

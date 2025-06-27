@@ -26,20 +26,19 @@ public class ArticleControlNotificationServiceImpl implements ArticleControlNoti
 
     @Override
     public void sendControlTakenNotification(
-        long previousUserId,
-        long newUserId,
-        String articleId,
-        String articleTitle,
-        ServiceContext serviceContext) throws Exception {
+            long previousUserId,
+            long newUserId,
+            String articleId,
+            String articleTitle,
+            ServiceContext serviceContext) throws Exception {
 
         try {
             User newUser = _userLocalService.getUser(newUserId);
             User previousUser = _userLocalService.getUser(previousUserId);
 
             String message = String.format(
-                "Sua sessão de edição foi transferida para %s. O artigo não está mais sob seu controle.",
-                newUser.getFullName()
-            );
+                    "Sua sessão de edição foi transferida para %s. O artigo não está mais sob seu controle.",
+                    newUser.getFullName());
 
             JSONObject payloadJSON = JSONFactoryUtil.createJSONObject();
             payloadJSON.put("articleId", articleId);
@@ -52,20 +51,18 @@ public class ArticleControlNotificationServiceImpl implements ArticleControlNoti
             payloadJSON.put("timestamp", System.currentTimeMillis());
 
             _userNotificationEventLocalService.addUserNotificationEvent(
-                previousUserId,
-                ArticleControlNotificationHandler.PORTLET_ID,
-                System.currentTimeMillis(),
-                UserNotificationDeliveryConstants.TYPE_WEBSITE,
-                newUserId,
-                payloadJSON.toString(),
-                false,
-                serviceContext
-            );
+                    previousUserId,
+                    ArticleControlNotificationHandler.PORTLET_ID,
+                    System.currentTimeMillis(),
+                    UserNotificationDeliveryConstants.TYPE_WEBSITE,
+                    newUserId,
+                    payloadJSON.toString(),
+                    false,
+                    serviceContext);
 
             _log.info(String.format(
-                "Notificação de controle de artigo enviada: usuário %s (%d) assumiu controle do artigo %s do usuário %s (%d)",
-                newUser.getFullName(), newUserId, articleId, previousUser.getFullName(), previousUserId
-            ));
+                    "Notificação de controle de artigo enviada: usuário %s (%d) assumiu controle do artigo %s do usuário %s (%d)",
+                    newUser.getFullName(), newUserId, articleId, previousUser.getFullName(), previousUserId));
 
         } catch (Exception e) {
             _log.error("Erro ao enviar notificação de controle de artigo", e);
