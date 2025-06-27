@@ -6,8 +6,6 @@ import com.liferay.portal.aop.AopService;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserLocalService;
@@ -31,27 +29,19 @@ import org.osgi.service.component.annotations.Reference;
 public class ArticleEditLockLocalServiceImpl
 		extends ArticleEditLockLocalServiceBaseImpl {
 
-	private static final Log _log = LogFactoryUtil.getLog(ArticleEditLockLocalServiceImpl.class);
-
 	/**
 	 * Tenta criar um lock para edição do artigo
-	 * 
+	 *
 	 * @return true se conseguiu criar o lock, false se já existe um lock ativo
 	 */
 	public boolean tryLockArticle(
 			String articleId, long userId, ServiceContext serviceContext)
 			throws PortalException {
 
-		_log.info("Trying to lock article: " + articleId + " for user: " + userId);
-
 		// Verifica se já existe um lock ativo para este artigo
 		ArticleEditLock existingLock = getActiveArticleLock(articleId);
 
 		if (existingLock != null) {
-			_log.info("Found existing lock for article: " + articleId +
-					", locked by user: " + existingLock.getUserId() +
-					", lock time: " + existingLock.getLockTime());
-
 			// Verifica se o lock expirou (30 minutos para teste, 2 horas para produção)
 			long lockAge = System.currentTimeMillis() - existingLock.getLockTime().getTime();
 			long thirtyMinutesInMillis = 30 * 60 * 1000; // 30 minutos para teste
@@ -59,8 +49,6 @@ public class ArticleEditLockLocalServiceImpl
 
 			if (lockAge > thirtyMinutesInMillis) {
 				// Lock expirou, reutiliza o registro existente
-				_log.info("Lock expired, reusing existing record...");
-
 				User user = userLocalService.getUser(userId);
 
 				existingLock.setUserId(userId);
@@ -71,16 +59,13 @@ public class ArticleEditLockLocalServiceImpl
 				existingLock.setModifiedDate(new Date());
 
 				updateArticleEditLock(existingLock);
-				_log.info("Lock updated successfully for article: " + articleId);
 				return true;
 
 			} else if (existingLock.getUserId() != userId) {
 				// Lock ativo de outro usuário
-				_log.info("Article is locked by another user");
 				return false;
 			} else {
 				// Mesmo usuário, atualiza o timestamp
-				_log.info("Same user, updating lock timestamp");
 				existingLock.setLockTime(new Date());
 				existingLock.setModifiedDate(new Date());
 				updateArticleEditLock(existingLock);
@@ -92,8 +77,6 @@ public class ArticleEditLockLocalServiceImpl
 		ArticleEditLock inactiveLock = getInactiveArticleLock(articleId);
 
 		if (inactiveLock != null) {
-			_log.info("Found inactive lock record, reusing it...");
-
 			User user = userLocalService.getUser(userId);
 
 			inactiveLock.setUserId(userId);
@@ -104,14 +87,11 @@ public class ArticleEditLockLocalServiceImpl
 			inactiveLock.setModifiedDate(new Date());
 
 			updateArticleEditLock(inactiveLock);
-			_log.info("Inactive lock reactivated successfully for article: " + articleId);
 			return true;
 		}
 
 		// Cria novo lock apenas se não existe nenhum registro
 		try {
-			_log.info("Creating new lock record for article: " + articleId);
-
 			long articleEditLockId = counterLocalService.increment();
 			ArticleEditLock articleEditLock = createArticleEditLock(articleEditLockId);
 
@@ -129,11 +109,9 @@ public class ArticleEditLockLocalServiceImpl
 			articleEditLock.setLockTime(new Date());
 
 			addArticleEditLock(articleEditLock);
-			_log.info("New lock created successfully for article: " + articleId);
 
 			return true;
 		} catch (Exception e) {
-			_log.error("Error creating lock for article: " + articleId, e);
 			// Se falhar por constraint violation, significa que outro processo criou o lock
 			// Retorna false indicando que não conseguiu criar o lock
 			return false;
@@ -144,8 +122,6 @@ public class ArticleEditLockLocalServiceImpl
 	 * Libera o lock do artigo
 	 */
 	public void unlockArticle(String articleId) throws PortalException {
-		_log.info("Unlocking article: " + articleId);
-
 		com.liferay.portal.kernel.dao.orm.DynamicQuery dynamicQuery = dynamicQuery();
 
 		dynamicQuery.add(
@@ -155,7 +131,6 @@ public class ArticleEditLockLocalServiceImpl
 
 		for (ArticleEditLock lock : locks) {
 			deleteArticleEditLock(lock);
-			_log.info("Lock record DELETED for article: " + articleId);
 		}
 	}
 
@@ -187,33 +162,22 @@ public class ArticleEditLockLocalServiceImpl
 	 * Verifica se um artigo está bloqueado por outro usuário
 	 */
 	public boolean isArticleLockedByOtherUser(String articleId, long userId) {
-		_log.info("🔍 SERVICE: isArticleLockedByOtherUser(articleId=" + articleId + ", userId=" + userId + ")");
-
 		ArticleEditLock lock = getActiveArticleLock(articleId);
 
 		if (lock == null) {
-			_log.info("🔓 SERVICE: No active lock found → returning false");
 			return false;
 		}
-
-		_log.info("🔒 SERVICE: Active lock found - lockUserId=" + lock.getUserId() +
-				", lockTime=" + lock.getLockTime());
 
 		// Verifica timeout de 30 minutos para teste
 		long lockAge = System.currentTimeMillis() - lock.getLockTime().getTime();
 		long thirtyMinutesInMillis = 30 * 60 * 1000; // 30 minutos para teste
 		// long twoHoursInMillis = 2 * 60 * 60 * 1000; // 2 horas para produção
 
-		_log.info("⏱️ SERVICE: Lock age=" + lockAge + "ms (" + (lockAge / 1000) + " seconds)");
-
 		if (lockAge > thirtyMinutesInMillis) {
-			_log.info("⌛ SERVICE: Lock expired → returning false");
 			return false;
 		}
 
 		boolean isOtherUser = lock.getUserId() != userId;
-		_log.info("👤 SERVICE: Is other user? " + isOtherUser + " (lock=" + lock.getUserId() + " vs current=" + userId
-				+ ")");
 
 		return isOtherUser;
 	}
@@ -223,8 +187,6 @@ public class ArticleEditLockLocalServiceImpl
 	 */
 	public void cleanExpiredLocks() {
 		try {
-			_log.info("Starting expired locks cleanup...");
-
 			// Busca todos os locks ativos
 			// Como não temos um finder específico para todos os locks ativos,
 			// vamos buscar todos e filtrar
@@ -234,29 +196,18 @@ public class ArticleEditLockLocalServiceImpl
 			// Date twoHoursAgo = new Date(System.currentTimeMillis() - (2 * 60 * 60 *
 			// 1000)); // 2 horas para produção
 
-			_log.info("Looking for locks older than: " + thirtyMinutesAgo);
-			_log.info("Total locks found: " + allLocks.size());
-
 			int expiredCount = 0;
 			for (ArticleEditLock lock : allLocks) {
 				// Verifica se está locked e se expirou
 				if (lock.isLocked() && lock.getLockTime().before(thirtyMinutesAgo)) {
-					_log.info("Found expired lock: articleId=" + lock.getArticleId() +
-							", userId=" + lock.getUserId() +
-							", lockTime=" + lock.getLockTime());
-
 					lock.setLocked(false);
 					lock.setModifiedDate(new Date());
 					updateArticleEditLock(lock);
 					expiredCount++;
 				}
 			}
-
-			_log.info("Expired locks cleanup completed. Cleaned " + expiredCount + " locks.");
 		} catch (Exception e) {
-			// Log the error
-			_log.error("Error during expired locks cleanup", e);
-			e.printStackTrace();
+			// Silently ignore error
 		}
 	}
 
@@ -289,9 +240,6 @@ public class ArticleEditLockLocalServiceImpl
 			String articleId, long newUserId, ServiceContext serviceContext)
 			throws PortalException {
 
-		_log.info("takeControlOfArticle - Article: " + articleId +
-				", New User: " + newUserId);
-
 		// 1. Buscar lock ativo
 		ArticleEditLock currentLock = getActiveArticleLock(articleId);
 
@@ -321,13 +269,8 @@ public class ArticleEditLockLocalServiceImpl
 					previousUserId, previousUserName, newUserId,
 					newUser.getFullName(), articleId, serviceContext);
 		} catch (Exception e) {
-			_log.error("Error sending notification", e);
 			// Não falhar a operação por erro na notificação
 		}
-
-		_log.info("Control taken successfully: Article " + articleId +
-				" transferred from user " + previousUserId +
-				" to user " + newUserId);
 
 		return updatedLock;
 	}
@@ -348,7 +291,7 @@ public class ArticleEditLockLocalServiceImpl
 						serviceContext.getScopeGroupId(), articleId);
 				articleTitle = article.getTitle(serviceContext.getLocale());
 			} catch (Exception e) {
-				_log.debug("Could not get article title", e);
+				// Silently ignore
 			}
 
 			// Criar payload da notificação
@@ -381,11 +324,7 @@ public class ArticleEditLockLocalServiceImpl
 			com.liferay.portal.kernel.service.UserNotificationEventLocalServiceUtil.addUserNotificationEvent(
 					notification);
 
-			_log.info("Notification sent to user " + previousUserId +
-					" about control transfer");
-
 		} catch (Exception e) {
-			_log.error("Error sending take control notification", e);
 			// Não propagar erro - notificação é secundária
 		}
 	}

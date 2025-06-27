@@ -2,8 +2,6 @@ package com.example.article.lock.portlet;
 
 import com.example.article.lock.service.ArticleEditLockLocalService;
 import com.liferay.journal.constants.JournalPortletKeys;
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
 
 import java.io.IOException;
@@ -27,17 +25,14 @@ import org.osgi.service.component.annotations.Reference;
 }, service = javax.portlet.filter.PortletFilter.class)
 public class JournalExitDetectionFilter implements RenderFilter {
 
-    private static final Log _log = LogFactoryUtil.getLog(JournalExitDetectionFilter.class);
     private static final String EDITING_ARTICLE_KEY = "EDITING_ARTICLE_ID";
 
     @Override
     public void init(FilterConfig filterConfig) throws PortletException {
-        _log.info(">>> JournalExitDetectionFilter INITIALIZED");
     }
 
     @Override
     public void destroy() {
-        _log.info(">>> JournalExitDetectionFilter DESTROYED");
     }
 
     @Override
@@ -94,11 +89,9 @@ public class JournalExitDetectionFilter implements RenderFilter {
                             // Caso contrário, outro usuário tem o controle - NÃO remove o lock
                         }
                         // Se não há lock ativo, artigo já estava livre
-                    } else {
-                        _log.warn("ThemeDisplay não encontrado, não é possível verificar usuário");
                     }
                 } catch (Exception e) {
-                    _log.error("Error checking/releasing lock on navigation", e);
+                    // Silently fail
                 }
 
                 // Remove da sessão independentemente (a sessão é local do usuário)

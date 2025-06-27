@@ -6,8 +6,6 @@ import com.example.article.lock.service.ArticleEditLockLocalService;
 import com.liferay.journal.constants.JournalPortletKeys;
 import com.liferay.journal.model.JournalArticle;
 import com.liferay.journal.service.JournalArticleLocalService;
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.portlet.bridges.mvc.BaseMVCActionCommand;
 import com.liferay.portal.kernel.portlet.bridges.mvc.MVCActionCommand;
 import com.liferay.portal.kernel.service.ServiceContext;
@@ -31,9 +29,6 @@ import org.osgi.service.component.annotations.Reference;
         "mvc.command.name=/journal/take_article_control"
 }, service = MVCActionCommand.class)
 public class TakeArticleControlActionCommand extends BaseMVCActionCommand {
-
-    private static final Log _log = LogFactoryUtil.getLog(
-            TakeArticleControlActionCommand.class);
 
     @Override
     protected void doProcessAction(
@@ -74,7 +69,7 @@ public class TakeArticleControlActionCommand extends BaseMVCActionCommand {
                             articleTitle = article.getTitle(themeDisplay.getLocale());
                         }
                     } catch (Exception e) {
-                        _log.warn("Could not fetch article title for: " + articleId, e);
+                        // Silently use articleId as title
                     }
 
                     _articleControlNotificationService.sendControlTakenNotification(
@@ -84,7 +79,6 @@ public class TakeArticleControlActionCommand extends BaseMVCActionCommand {
                             articleTitle,
                             serviceContext);
                 } catch (Exception e) {
-                    _log.error("Failed to send notification to previous user", e);
                     // Não falhar a operação principal por causa da notificação
                 }
             }
@@ -108,7 +102,6 @@ public class TakeArticleControlActionCommand extends BaseMVCActionCommand {
             actionResponse.sendRedirect(redirect);
 
         } catch (Exception e) {
-            _log.error("Error taking control of article: " + articleId, e);
             SessionErrors.add(actionRequest, e.getClass(), e);
 
             // Redirecionar de volta

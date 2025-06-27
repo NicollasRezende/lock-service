@@ -2,8 +2,6 @@ package com.example.article.lock.portlet;
 
 import com.example.article.lock.service.ArticleEditLockLocalService;
 import com.liferay.journal.constants.JournalPortletKeys;
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
 
 import java.io.IOException;
@@ -22,8 +20,6 @@ import org.osgi.service.component.annotations.Reference;
         "javax.portlet.name=" + JournalPortletKeys.JOURNAL
 }, service = javax.portlet.filter.PortletFilter.class)
 public class JournalPublishActionFilter implements ActionFilter {
-
-    private static final Log _log = LogFactoryUtil.getLog(JournalPublishActionFilter.class);
 
     @Override
     public void init(FilterConfig filterConfig) throws PortletException {
@@ -67,7 +63,7 @@ public class JournalPublishActionFilter implements ActionFilter {
             try {
                 _articleEditLockLocalService.unlockArticle(articleId);
             } catch (Exception e) {
-                _log.error("Error releasing lock", e);
+                // Silently fail
             }
         }
     }

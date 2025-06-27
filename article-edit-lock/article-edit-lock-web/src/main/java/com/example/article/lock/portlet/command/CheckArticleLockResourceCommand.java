@@ -4,8 +4,6 @@ import com.example.article.lock.service.ArticleEditLockLocalService;
 import com.liferay.journal.constants.JournalPortletKeys;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.portlet.bridges.mvc.BaseMVCResourceCommand;
 import com.liferay.portal.kernel.portlet.bridges.mvc.MVCResourceCommand;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
@@ -25,8 +23,6 @@ import org.osgi.service.component.annotations.Reference;
         "mvc.command.name=/journal/check_article_lock"
 }, service = MVCResourceCommand.class)
 public class CheckArticleLockResourceCommand extends BaseMVCResourceCommand {
-
-    private static final Log _log = LogFactoryUtil.getLog(CheckArticleLockResourceCommand.class);
 
     @Override
     protected void doServeResource(
@@ -60,7 +56,6 @@ public class CheckArticleLockResourceCommand extends BaseMVCResourceCommand {
                                 .getUser(currentLock.getUserId());
                         currentEditorName = currentEditor.getFullName();
                     } catch (Exception e) {
-                        _log.warn("Erro ao buscar dados do usuário: " + currentLock.getUserId(), e);
                         currentEditorName = "Usuário desconhecido";
                     }
                 } else {
@@ -83,7 +78,6 @@ public class CheckArticleLockResourceCommand extends BaseMVCResourceCommand {
                 jsonObject.put("message", "Article ID is required");
             }
         } catch (Exception e) {
-            _log.error("Error checking article lock", e);
             jsonObject.put("success", false);
             jsonObject.put("message", e.getMessage());
         }

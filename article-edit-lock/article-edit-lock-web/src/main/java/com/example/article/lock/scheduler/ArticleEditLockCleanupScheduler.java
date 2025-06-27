@@ -2,8 +2,6 @@ package com.example.article.lock.scheduler;
 
 import com.example.article.lock.service.ArticleEditLockLocalService;
 import com.liferay.petra.function.UnsafeRunnable;
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.scheduler.SchedulerJobConfiguration;
 import com.liferay.portal.kernel.scheduler.TriggerConfiguration;
 
@@ -19,8 +17,6 @@ import org.osgi.service.component.annotations.Reference;
 public class ArticleEditLockCleanupScheduler
         implements SchedulerJobConfiguration {
 
-    private static final Log _log = LogFactoryUtil.getLog(ArticleEditLockCleanupScheduler.class);
-
     @Override
     public TriggerConfiguration getTriggerConfiguration() {
         // Executa a cada 2 minutos para testes
@@ -32,14 +28,7 @@ public class ArticleEditLockCleanupScheduler
     @Override
     public UnsafeRunnable<Exception> getJobExecutorUnsafeRunnable() {
         return () -> {
-            _log.info("Starting ArticleEditLock cleanup job...");
-            try {
-                _articleEditLockLocalService.cleanExpiredLocks();
-                _log.info("ArticleEditLock cleanup job completed successfully");
-            } catch (Exception e) {
-                _log.error("Error during ArticleEditLock cleanup job", e);
-                throw e;
-            }
+            _articleEditLockLocalService.cleanExpiredLocks();
         };
     }
 

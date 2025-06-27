@@ -3,8 +3,6 @@ package com.example.article.lock.portlet;
 import com.example.article.lock.service.ArticleEditLockLocalService;
 import com.liferay.journal.constants.JournalPortletKeys;
 import com.liferay.portal.kernel.language.LanguageUtil;
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextFactory;
@@ -27,12 +25,10 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
 @Component(immediate = true, property = {
-                "javax.portlet.name=" + JournalPortletKeys.JOURNAL,
-                "service.ranking:Integer=1000"
+        "javax.portlet.name=" + JournalPortletKeys.JOURNAL,
+        "service.ranking:Integer=1000"
 }, service = javax.portlet.filter.PortletFilter.class)
 public class JournalEditLockFilter implements RenderFilter {
-
-        private static final Log _log = LogFactoryUtil.getLog(JournalEditLockFilter.class);
 
         @Override
         public void init(FilterConfig filterConfig) throws PortletException {
@@ -44,37 +40,37 @@ public class JournalEditLockFilter implements RenderFilter {
 
         @Override
         public void doFilter(
-                        RenderRequest renderRequest, RenderResponse renderResponse,
-                        FilterChain filterChain)
-                        throws IOException, PortletException {
+                RenderRequest renderRequest, RenderResponse renderResponse,
+                FilterChain filterChain)
+                throws IOException, PortletException {
 
                 String mvcRenderCommandName = ParamUtil.getString(renderRequest, "mvcRenderCommandName");
                 String articleId = ParamUtil.getString(renderRequest, "articleId");
 
                 // Verifica se está editando um artigo existente
                 if ("/journal/edit_article".equals(mvcRenderCommandName) &&
-                                articleId != null && !articleId.isEmpty()) {
+                        articleId != null && !articleId.isEmpty()) {
 
                         try {
                                 ThemeDisplay themeDisplay = (ThemeDisplay) renderRequest.getAttribute(
-                                                WebKeys.THEME_DISPLAY);
+                                        WebKeys.THEME_DISPLAY);
 
                                 ServiceContext serviceContext = ServiceContextFactory.getInstance(
-                                                renderRequest);
+                                        renderRequest);
 
                                 // Verificar se há lock ativo no banco
                                 com.example.article.lock.model.ArticleEditLock activeLock = _articleEditLockLocalService
-                                                .getActiveArticleLock(articleId);
+                                        .getActiveArticleLock(articleId);
 
                                 // Verifica se está bloqueado por outro usuário
                                 boolean isLocked = _articleEditLockLocalService.isArticleLockedByOtherUser(
-                                                articleId, themeDisplay.getUserId());
+                                        articleId, themeDisplay.getUserId());
 
                                 if (isLocked) {
                                         User editingUser = _articleEditLockLocalService.getEditingUser(articleId);
 
                                         if (editingUser != null
-                                                        && editingUser.getUserId() != themeDisplay.getUserId()) {
+                                                && editingUser.getUserId() != themeDisplay.getUserId()) {
                                                 // Renderiza o modal apenas se for outro usuário
                                                 renderLockModal(renderResponse, editingUser, themeDisplay, articleId);
                                                 return;
@@ -82,7 +78,7 @@ public class JournalEditLockFilter implements RenderFilter {
 
                                         // Se há lock ativo de outro usuário, deve parar aqui
                                         if (editingUser != null
-                                                        && editingUser.getUserId() != themeDisplay.getUserId()) {
+                                                && editingUser.getUserId() != themeDisplay.getUserId()) {
                                                 renderLockModal(renderResponse, editingUser, themeDisplay, articleId);
                                                 return;
                                         }
@@ -92,30 +88,29 @@ public class JournalEditLockFilter implements RenderFilter {
                                 {
                                         // Tenta criar ou atualizar o lock para o usuário atual
                                         boolean lockCreated = _articleEditLockLocalService.tryLockArticle(
-                                                        articleId, themeDisplay.getUserId(), serviceContext);
+                                                articleId, themeDisplay.getUserId(), serviceContext);
 
                                         if (!lockCreated) {
                                                 // Se falhou, verifica se é porque outro usuário está editando
                                                 User editingUser = _articleEditLockLocalService
-                                                                .getEditingUser(articleId);
+                                                        .getEditingUser(articleId);
 
                                                 if (editingUser != null && editingUser.getUserId() != themeDisplay
-                                                                .getUserId()) {
+                                                        .getUserId()) {
                                                         // Só mostra modal se for realmente outro usuário
                                                         renderLockModal(renderResponse, editingUser, themeDisplay,
-                                                                        articleId);
+                                                                articleId);
                                                         return;
                                                 } else {
                                                         // Mesmo que não seja outro usuário, se o lock falhou, não deve
                                                         // prosseguir
                                                         renderErrorPage(renderResponse,
-                                                                        "Não foi possível obter acesso ao documento. Tente novamente.");
+                                                                "Não foi possível obter acesso ao documento. Tente novamente.");
                                                         return;
                                                 }
                                         }
                                 }
                         } catch (Exception e) {
-                                _log.error("Error in JournalEditLockFilter", e);
                                 e.printStackTrace();
                         }
                 }
@@ -126,24 +121,24 @@ public class JournalEditLockFilter implements RenderFilter {
                 // Se estamos editando um artigo, injeta o script de monitoramento APÓS o
                 // processamento
                 if ("/journal/edit_article".equals(mvcRenderCommandName) &&
-                                articleId != null && !articleId.isEmpty()) {
+                        articleId != null && !articleId.isEmpty()) {
 
                         try {
                                 ThemeDisplay themeDisplay = (ThemeDisplay) renderRequest
-                                                .getAttribute(WebKeys.THEME_DISPLAY);
+                                        .getAttribute(WebKeys.THEME_DISPLAY);
 
                                 // Injeta o script diretamente no final da resposta
                                 injectControlMonitorScript(renderResponse, articleId, themeDisplay);
 
                         } catch (Exception e) {
-                                _log.warn("Failed to inject control monitor script", e);
+                                // Silently fail
                         }
                 }
         }
 
         private void renderLockModal(RenderResponse renderResponse, User editingUser,
-                        ThemeDisplay themeDisplay, String articleId)
-                        throws IOException {
+                                     ThemeDisplay themeDisplay, String articleId)
+                throws IOException {
 
                 renderResponse.setContentType("text/html");
                 PrintWriter writer = renderResponse.getWriter();
@@ -156,9 +151,9 @@ public class JournalEditLockFilter implements RenderFilter {
                 writer.println("<head>");
                 writer.println("<meta charset='UTF-8'>");
                 writer.println("<link rel='stylesheet' href='" + themeDisplay.getCDNHost() +
-                                "/o/frontend-theme-font-awesome-web/css/main.css'>");
+                        "/o/frontend-theme-font-awesome-web/css/main.css'>");
                 writer.println("<link rel='stylesheet' href='" + themeDisplay.getPortalURL() +
-                                "/o/frontend-css-web/main.css'>");
+                        "/o/frontend-css-web/main.css'>");
                 writer.println("<style>");
                 writer.println("  .article-lock-modal { padding: 2rem; }");
                 writer.println("  .modal-content-custom { padding: 2rem; }");
@@ -199,14 +194,14 @@ public class JournalEditLockFilter implements RenderFilter {
 
                 // Botão Voltar
                 writer.println("            <button type='button' class='btn btn-secondary' " +
-                                "onclick='goBackSafely();'>");
+                        "onclick='goBackSafely();'>");
                 writer.println("              <span class='lfr-btn-label'>Voltar</span>");
                 writer.println("            </button>");
 
                 // Botão Assumir o controle
                 writer.println("            <button type='button' class='btn btn-primary' " +
-                                "id='takeControlBtn' " +
-                                "data-article-id='" + HtmlUtil.escapeAttribute(articleId) + "'>");
+                        "id='takeControlBtn' " +
+                        "data-article-id='" + HtmlUtil.escapeAttribute(articleId) + "'>");
                 writer.println("              <span class='lfr-btn-label'>Assumir o controle</span>");
                 writer.println("            </button>");
 
@@ -225,7 +220,7 @@ public class JournalEditLockFilter implements RenderFilter {
                 writer.println("  var listUrl = window.location.origin + window.location.pathname +");
                 writer.println("                '?p_p_id=" + JournalPortletKeys.JOURNAL + "&p_p_lifecycle=0' +");
                 writer.println("                '&_" + JournalPortletKeys.JOURNAL
-                                + "_mvcRenderCommandName=%2Fjournal%2Fview';");
+                        + "_mvcRenderCommandName=%2Fjournal%2Fview';");
                 writer.println("  window.location.href = listUrl;");
                 writer.println("}");
                 writer.println("");
@@ -238,7 +233,6 @@ public class JournalEditLockFilter implements RenderFilter {
                 writer.println("      e.preventDefault();");
                 writer.println("      ");
                 writer.println("      var articleId = this.getAttribute('data-article-id');");
-                writer.println("      console.log('Taking control of article:', articleId);");
                 writer.println("      ");
                 writer.println("      var confirmMsg = 'Tem certeza que deseja assumir o controle deste documento?';");
                 writer.println("      ");
@@ -252,7 +246,7 @@ public class JournalEditLockFilter implements RenderFilter {
                 writer.println("        var namespaceInput = document.createElement('input');");
                 writer.println("        namespaceInput.type = 'hidden';");
                 writer.println("        namespaceInput.name = '" + renderResponse.getNamespace()
-                                + "javax.portlet.action';");
+                        + "javax.portlet.action';");
                 writer.println("        namespaceInput.value = '/journal/take_article_control';");
                 writer.println("        form.appendChild(namespaceInput);");
                 writer.println("        ");
@@ -270,7 +264,7 @@ public class JournalEditLockFilter implements RenderFilter {
                 writer.println("        lifecycleInput.type = 'hidden';");
                 writer.println("        lifecycleInput.name = 'p_p_id';");
                 writer.println("        lifecycleInput.value = '"
-                                + renderResponse.getNamespace().replace("_INSTANCE_", "").replace("_", "") + "';");
+                        + renderResponse.getNamespace().replace("_INSTANCE_", "").replace("_", "") + "';");
                 writer.println("        form.appendChild(lifecycleInput);");
                 writer.println("        ");
 
@@ -283,19 +277,19 @@ public class JournalEditLockFilter implements RenderFilter {
 
                 // Criar URL de redirect para edição
                 String editUrl = themeDisplay.getPortalURL() +
-                                themeDisplay.getURLCurrent() +
-                                "?p_p_id=" + JournalPortletKeys.JOURNAL +
-                                "&p_p_lifecycle=0" +
-                                "&_" + JournalPortletKeys.JOURNAL +
-                                "_mvcRenderCommandName=/journal/edit_article" +
-                                "&_" + JournalPortletKeys.JOURNAL +
-                                "_articleId=" + articleId;
+                        themeDisplay.getURLCurrent() +
+                        "?p_p_id=" + JournalPortletKeys.JOURNAL +
+                        "&p_p_lifecycle=0" +
+                        "&_" + JournalPortletKeys.JOURNAL +
+                        "_mvcRenderCommandName=/journal/edit_article" +
+                        "&_" + JournalPortletKeys.JOURNAL +
+                        "_articleId=" + articleId;
 
                 writer.println("        var redirectInput = document.createElement('input');");
                 writer.println("        redirectInput.type = 'hidden';");
                 writer.println("        redirectInput.name = '" + renderResponse.getNamespace() + "redirect';");
                 writer.println("        redirectInput.value = '" +
-                                HtmlUtil.escapeJS(editUrl) + "';");
+                        HtmlUtil.escapeJS(editUrl) + "';");
                 writer.println("        form.appendChild(redirectInput);");
                 writer.println("        ");
                 writer.println("        var backURLInput = document.createElement('input');");
@@ -304,7 +298,6 @@ public class JournalEditLockFilter implements RenderFilter {
                 writer.println("        backURLInput.value = window.location.href;");
                 writer.println("        form.appendChild(backURLInput);");
                 writer.println("        ");
-                writer.println("        console.log('Submitting form with articleId:', articleId);");
                 writer.println("        document.body.appendChild(form);");
                 writer.println("        form.submit();");
                 writer.println("      }");
@@ -325,11 +318,11 @@ public class JournalEditLockFilter implements RenderFilter {
                 writer.println("  function checkArticleControl() {");
                 writer.println("    var xhr = new XMLHttpRequest();");
                 writer.println("    var url = '" + themeDisplay.getPortalURL() + "/web"
-                                + themeDisplay.getScopeGroup().getFriendlyURL() + "/manage" +
-                                "?p_p_id=" + JournalPortletKeys.JOURNAL +
-                                "&p_p_lifecycle=2" +
-                                "&p_p_resource_id=%2Fjournal%2Fcheck_article_lock" +
-                                "&_" + JournalPortletKeys.JOURNAL + "_articleId=' + encodeURIComponent(articleId);");
+                        + themeDisplay.getScopeGroup().getFriendlyURL() + "/manage" +
+                        "?p_p_id=" + JournalPortletKeys.JOURNAL +
+                        "&p_p_lifecycle=2" +
+                        "&p_p_resource_id=%2Fjournal%2Fcheck_article_lock" +
+                        "&_" + JournalPortletKeys.JOURNAL + "_articleId=' + encodeURIComponent(articleId);");
                 writer.println("    ");
                 writer.println("    xhr.open('GET', url, true);");
                 writer.println("    xhr.setRequestHeader('Content-Type', 'application/json');");
@@ -340,7 +333,6 @@ public class JournalEditLockFilter implements RenderFilter {
                 writer.println("          var response = JSON.parse(xhr.responseText);");
                 writer.println("          ");
                 writer.println("          if (response.success && !response.hasControl) {");
-                writer.println("            console.log('Controle perdido! Usuário atual:', response.currentEditor);");
                 writer.println("            ");
                 writer.println("            // Para o monitoramento");
                 writer.println("            clearInterval(checkInterval);");
@@ -351,12 +343,11 @@ public class JournalEditLockFilter implements RenderFilter {
                 writer.println("                          '?p_p_id=" + JournalPortletKeys.JOURNAL + "' +");
                 writer.println("                          '&p_p_lifecycle=0' +");
                 writer.println("                          '&_" + JournalPortletKeys.JOURNAL
-                                + "_mvcRenderCommandName=%2Fjournal%2Fview';");
+                        + "_mvcRenderCommandName=%2Fjournal%2Fview';");
                 writer.println("            ");
                 writer.println("            window.location.href = listUrl;");
                 writer.println("          }");
                 writer.println("        } catch (e) {");
-                writer.println("          console.error('Erro ao verificar controle do artigo:', e);");
                 writer.println("        }");
                 writer.println("      }");
                 writer.println("    };");
@@ -365,7 +356,6 @@ public class JournalEditLockFilter implements RenderFilter {
                 writer.println("  }");
                 writer.println("  ");
                 writer.println("  // NÃO inicia monitoramento no modal - usuário já sabe que não tem controle");
-                writer.println("  console.log('ℹ️ Modal de controle - monitoramento desnecessário');");
                 writer.println("})();");
                 writer.println("</script>");
 
@@ -374,138 +364,104 @@ public class JournalEditLockFilter implements RenderFilter {
         }
 
         private void injectControlMonitorScript(RenderResponse renderResponse, String articleId,
-                        ThemeDisplay themeDisplay) throws IOException {
+                                                ThemeDisplay themeDisplay) throws IOException {
 
                 String script = String.format(
-                                "<script>\n" +
-                                                "console.log('>>> Article lock monitor injected for article: %s');\n" +
-                                                "(function() {\n" +
-                                                "  var articleId = '%s';\n" +
-                                                "  var userId = %d;\n" +
-                                                "  var checkInterval;\n" +
-                                                "  \n" +
-                                                "  function checkArticleControl() {\n" +
-                                                "    var xhr = new XMLHttpRequest();\n" +
-                                                "    var url = '%s/web%s/manage?p_p_id=%s&p_p_lifecycle=2&p_p_resource_id=%%2Fjournal%%2Fcheck_article_lock&_%s_articleId=' + encodeURIComponent(articleId);\n"
-                                                +
-                                                "    \n" +
-                                                "    xhr.open('GET', url, true);\n" +
-                                                "    xhr.setRequestHeader('Content-Type', 'application/json');\n" +
-                                                "    \n" +
-                                                "    xhr.onreadystatechange = function() {\n" +
-                                                "      if (xhr.readyState === 4) {\n" +
-                                                "        console.log('📡 Response Status:', xhr.status);\n" +
-                                                "        console.log('📡 Response Text:', xhr.responseText);\n" +
-                                                "        \n" +
-                                                "        if (xhr.status === 200) {\n" +
-                                                "          try {\n" +
-                                                "            var response = JSON.parse(xhr.responseText);\n" +
-                                                "            console.log('📊 Parsed Response:', response);\n" +
-                                                "            \n" +
-                                                "            if (response.success) {\n" +
-                                                "              if (response.lockExists) {\n" +
-                                                "                console.log('🔒 Lock existe no banco!');\n" +
-                                                "                console.log('- Editor atual ID:', response.currentEditorId);\n"
-                                                +
-                                                "                console.log('- Editor atual nome:', response.currentEditor);\n"
-                                                +
-                                                "                console.log('- Meu ID:', response.userId);\n" +
-                                                "                console.log('- Tenho controle?', response.hasControl);\n"
-                                                +
-                                                "                \n" +
-                                                "                if (!response.hasControl) {\n" +
-                                                "                  console.log('⚠️ CONTROLE PERDIDO! Editor atual:', response.currentEditor);\n"
-                                                +
-                                                "                  \n" +
-                                                "                  clearInterval(checkInterval);\n" +
-                                                "                  \n" +
-                                                "                  var editorName = response.currentEditor || 'Outro usuário';\n"
-                                                +
-                                                "                  \n" +
-                                                "                  // Usar toast do Liferay em vez de alert\n" +
-                                                "                  if (typeof Liferay !== 'undefined' && Liferay.Util && Liferay.Util.openToast) {\n"
-                                                +
-                                                "                    Liferay.Util.openToast({\n" +
-                                                "                      message: '⚠️ ' + editorName + ' assumiu o controle deste documento. Redirecionando...',\n"
-                                                +
-                                                "                      title: 'Controle Transferido',\n" +
-                                                "                      type: 'warning',\n" +
-                                                "                      autoClose: 5000\n" +
-                                                "                    });\n" +
-                                                "                  } else {\n" +
-                                                "                    // Fallback para alert padrão\n" +
-                                                "                    alert('⚠️ CONTROLE TRANSFERIDO\\n\\n' + editorName + ' assumiu o controle deste documento.\\nA página será redirecionada automaticamente.');\n"
-                                                +
-                                                "                  }\n" +
-                                                "                  \n" +
-                                                "                  // Aguarda um pouco antes de redirecionar para que o toast apareça\n"
-                                                +
-                                                "                  setTimeout(function() {\n" +
-                                                "                    var listUrl = window.location.origin + window.location.pathname +\n"
-                                                +
-                                                "                                  '?p_p_id=%s&p_p_lifecycle=0&_%s_mvcRenderCommandName=%%2Fjournal%%2Fview';\n"
-                                                +
-                                                "                    window.location.href = listUrl;\n" +
-                                                "                  }, 2500);\n" +
-                                                "                } else {\n" +
-                                                "                  console.log('✅ Ainda tenho controle do artigo');\n" +
-                                                "                }\n" +
-                                                "              } else {\n" +
-                                                "                console.log('🔓 Nenhum lock no banco - artigo livre');\n"
-                                                +
-                                                "              }\n" +
-                                                "            } else {\n" +
-                                                "              console.error('❌ Resposta indica falha:', response.message);\n"
-                                                +
-                                                "            }\n" +
-                                                "          } catch (e) {\n" +
-                                                "            console.error('❌ Erro ao parsear JSON:', e);\n" +
-                                                "            console.error('Response text was:', xhr.responseText);\n" +
-                                                "          }\n" +
-                                                "        } else {\n" +
-                                                "          console.error('❌ HTTP Error:', xhr.status, xhr.statusText);\n"
-                                                +
-                                                "        }\n" +
-                                                "      }\n" +
-                                                "    };\n" +
-                                                "    \n" +
-                                                "    xhr.send();\n" +
-                                                "  }\n" +
-                                                "  \n" +
-                                                "  // Verifica se está editando um artigo\n" +
-                                                "  if (articleId && (window.location.href.indexOf('edit_article') > -1 || window.location.href.indexOf('articleId') > -1)) {\n"
-                                                +
-                                                "    console.log('🔄 INICIANDO monitoramento de controle para artigo:', articleId);\n"
-                                                +
-                                                "    \n" +
-                                                "    // Verifica a cada 3 segundos\n" +
-                                                "    checkInterval = setInterval(checkArticleControl, 3000);\n" +
-                                                "    \n" +
-                                                "    // Primeira verificação em 2 segundos\n" +
-                                                "    setTimeout(checkArticleControl, 2000);\n" +
-                                                "    \n" +
-                                                "    // Para o monitoramento quando a página for fechada\n" +
-                                                "    window.addEventListener('beforeunload', function() {\n" +
-                                                "      if (checkInterval) {\n" +
-                                                "        clearInterval(checkInterval);\n" +
-                                                "        console.log('🛑 Monitoramento de controle parado');\n" +
-                                                "      }\n" +
-                                                "    });\n" +
-                                                "  } else {\n" +
-                                                "    console.log('ℹ️ Não está editando artigo, monitoramento não iniciado');\n"
-                                                +
-                                                "  }\n" +
-                                                "})();\n" +
-                                                "</script>",
-                                HtmlUtil.escapeJS(articleId),
-                                HtmlUtil.escapeJS(articleId),
-                                themeDisplay.getUserId(),
-                                themeDisplay.getPortalURL(),
-                                themeDisplay.getScopeGroup().getFriendlyURL(),
-                                JournalPortletKeys.JOURNAL,
-                                JournalPortletKeys.JOURNAL,
-                                JournalPortletKeys.JOURNAL,
-                                JournalPortletKeys.JOURNAL);
+                        "<script>\n" +
+                                "(function() {\n" +
+                                "  var articleId = '%s';\n" +
+                                "  var userId = %d;\n" +
+                                "  var checkInterval;\n" +
+                                "  \n" +
+                                "  function checkArticleControl() {\n" +
+                                "    var xhr = new XMLHttpRequest();\n" +
+                                "    var url = '%s/web%s/manage?p_p_id=%s&p_p_lifecycle=2&p_p_resource_id=%%2Fjournal%%2Fcheck_article_lock&_%s_articleId=' + encodeURIComponent(articleId);\n"
+                                +
+                                "    \n" +
+                                "    xhr.open('GET', url, true);\n" +
+                                "    xhr.setRequestHeader('Content-Type', 'application/json');\n" +
+                                "    \n" +
+                                "    xhr.onreadystatechange = function() {\n" +
+                                "      if (xhr.readyState === 4) {\n" +
+                                "        \n" +
+                                "        if (xhr.status === 200) {\n" +
+                                "          try {\n" +
+                                "            var response = JSON.parse(xhr.responseText);\n" +
+                                "            \n" +
+                                "            if (response.success) {\n" +
+                                "              if (response.lockExists) {\n" +
+                                "                \n" +
+                                "                if (!response.hasControl) {\n" +
+                                "                  \n" +
+                                "                  clearInterval(checkInterval);\n" +
+                                "                  \n" +
+                                "                  var editorName = response.currentEditor || 'Outro usuário';\n"
+                                +
+                                "                  \n" +
+                                "                  // Usar toast do Liferay em vez de alert\n" +
+                                "                  if (typeof Liferay !== 'undefined' && Liferay.Util && Liferay.Util.openToast) {\n"
+                                +
+                                "                    Liferay.Util.openToast({\n" +
+                                "                      message: '⚠️ ' + editorName + ' assumiu o controle deste documento. Redirecionando...',\n"
+                                +
+                                "                      title: 'Controle Transferido',\n" +
+                                "                      type: 'warning',\n" +
+                                "                      autoClose: 5000\n" +
+                                "                    });\n" +
+                                "                  } else {\n" +
+                                "                    // Fallback para alert padrão\n" +
+                                "                    alert('⚠️ CONTROLE TRANSFERIDO\\n\\n' + editorName + ' assumiu o controle deste documento.\\nA página será redirecionada automaticamente.');\n"
+                                +
+                                "                  }\n" +
+                                "                  \n" +
+                                "                  // Aguarda um pouco antes de redirecionar para que o toast apareça\n"
+                                +
+                                "                  setTimeout(function() {\n" +
+                                "                    var listUrl = window.location.origin + window.location.pathname +\n"
+                                +
+                                "                                  '?p_p_id=%s&p_p_lifecycle=0&_%s_mvcRenderCommandName=%%2Fjournal%%2Fview';\n"
+                                +
+                                "                    window.location.href = listUrl;\n" +
+                                "                  }, 2500);\n" +
+                                "                }\n" +
+                                "              }\n" +
+                                "            }\n" +
+                                "          } catch (e) {\n" +
+                                "          }\n" +
+                                "        }\n" +
+                                "      }\n" +
+                                "    };\n" +
+                                "    \n" +
+                                "    xhr.send();\n" +
+                                "  }\n" +
+                                "  \n" +
+                                "  // Verifica se está editando um artigo\n" +
+                                "  if (articleId && (window.location.href.indexOf('edit_article') > -1 || window.location.href.indexOf('articleId') > -1)) {\n"
+                                +
+                                "    \n" +
+                                "    // Verifica a cada 3 segundos\n" +
+                                "    checkInterval = setInterval(checkArticleControl, 3000);\n" +
+                                "    \n" +
+                                "    // Primeira verificação em 2 segundos\n" +
+                                "    setTimeout(checkArticleControl, 2000);\n" +
+                                "    \n" +
+                                "    // Para o monitoramento quando a página for fechada\n" +
+                                "    window.addEventListener('beforeunload', function() {\n" +
+                                "      if (checkInterval) {\n" +
+                                "        clearInterval(checkInterval);\n" +
+                                "      }\n" +
+                                "    });\n" +
+                                "  }\n" +
+                                "})();\n" +
+                                "</script>",
+                        HtmlUtil.escapeJS(articleId),
+                        themeDisplay.getUserId(),
+                        themeDisplay.getPortalURL(),
+                        themeDisplay.getScopeGroup().getFriendlyURL(),
+                        JournalPortletKeys.JOURNAL,
+                        JournalPortletKeys.JOURNAL,
+                        JournalPortletKeys.JOURNAL,
+                        JournalPortletKeys.JOURNAL);
 
                 renderResponse.getWriter().write(script);
         }
